@@ -11,6 +11,11 @@
                  [org.clojure/clojurescript "1.9.293"]
                  ;; server side deps
                  [com.stuartsierra/component "0.3.2"]
+                 ;; mysql
+                 [yesql "0.5.3"]
+                 [mysql/mysql-connector-java "5.1.32"]
+                 [org.clojure/data.json "0.2.6"]
+                 [com.walmartlabs/lacinia "0.17.0"]
                  [ring.middleware.logger "0.5.0"]
                  [compojure "1.5.0"]
                  [ring/ring-json "0.4.0"]

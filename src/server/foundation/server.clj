@@ -17,15 +17,20 @@
    (resources "/")
    (GET "/*" [] index/render)))
 
-(defrecord Server [port is-dev-mode?]
+(defrecord Server [port is-dev-mode? database]
   Lifecycle
   (start [component]
     (log/info ";; Starting foundation server")
     (let [wrap-logger (if is-dev-mode? identity wrap-with-logger)
+          wrap-dependencies (fn [handler]
+                              (fn [request]
+                                (handler (assoc request
+                                                :database database))))
           handler (-> my-routes
                       wrap-keyword-params
                       wrap-params
-                      wrap-json-params)
+                      wrap-json-params
+                      wrap-dependencies)
           server (run-jetty handler
                             {:port port
                              :join? false})]

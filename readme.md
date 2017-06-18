@@ -1,5 +1,11 @@
 ## foundation
 
+### Server 
+
+### Web 
+
+### Native apps
+
 ### Usage
 
 #### Install Expo [XDE and mobile client](https://docs.expo.io/versions/v15.0.0/introduction/installation.html)
