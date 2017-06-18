@@ -1,5 +1,7 @@
 (ns foundation.app
   (:require [reagent.core :as reagent]
+            [foundation.handlers]
+            [foundation.subs]
             [re-frame.core :as rf]))
 
 (defn app-root []
@@ -17,5 +19,4 @@
                         :font-weight "bold"}} "press"]]])))
 
 (defn ^:export init []
-  (js/console.log "INIT COOL OKOK")
   (reagent/render [:div "lol"] (.getElementById js/document "app")))
