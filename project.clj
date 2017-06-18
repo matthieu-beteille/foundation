@@ -31,7 +31,7 @@
 
   :clean-targets ^{:protect false} ["target/" "main.js" "resources/public/js/compiled/"]
 
-  :aliases {"figwheel" ["run" "-m" "user" "--figwheel"]
+  :aliases {;;"figwheel" ["run" "-m" "user" "--figwheel"]
             "externs" ["do" "clean"
                        ["run" "-m" "externs"]]
             "rebuild-modules" ["run" "-m" "user" "--rebuild-modules"]
@@ -39,27 +39,26 @@
             ["externs"
              ["with-profile" "prod" "cljsbuild" "once" "main"]]}
 
+  :cljsbuild {:builds [{:id           "web"
+                        :source-paths ["src/client/web" "src/client/shared"]
+                        :figwheel     true
+                        :compiler     {:output-to "resources/public/js/compiled/app.js"
+                                       :output-dir "resources/public/js/compiled/out"
+                                       :asset-path  "js/compiled/out"
+                                       :main "foundation.app"
+                                       :optimizations :none}}
+                       {:id "main2"
+                        :source-paths ["src/client/native" "src/client/shared" "env/dev"]
+                        :figwheel     true
+                        :compiler     {:output-to     "target/not-used.js"
+                                       :main          "env.main"
+                                       :output-dir    "target"
+                                       :optimizations :none}}]}
   :profiles {:dev {:dependencies [[figwheel-sidecar "0.5.4-7"]
                                   [com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.namespace "0.2.7"]]
-                   :source-paths ["src/client/native" "env/dev"]
-                   :cljsbuild    {:builds [{:id "main"
-                                            :source-paths ["src/client/native" "src/client/shared" "env/dev"]
-                                            :figwheel     true
-                                            :compiler     {:output-to     "target/not-used.js"
-                                                           :main          "env.main"
-                                                           :output-dir    "target"
-                                                           :optimizations :none}}
+                   :source-paths ["env/dev"]
 
-                                           {:id           "web"
-                                            :source-paths ["src/client/web" "src/client/shared"]
-                                            :figwheel     true
-                                            :compiler     {:output-to "resources/public/js/compiled/app.js"
-                                                           :output-dir "resources/public/js/compiled/out"
-                                                           :asset-path  "js/compiled/out"
-                                                           :main "foundation.app"
-                                                           :optimizations :none}}]
-                                  }
                    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
              :prod {:cljsbuild {:builds [{:id "main"
                                           :source-paths ["src/client/native" "env/prod"]

@@ -134,7 +134,7 @@
 (defn watch-for-external-modules
   []
   (let [path ".js-modules.edn"]
-    (hawk/watch! [{:paths ["src"]
+    (hawk/watch! [{:paths ["src/client/native"]
                    :filter hawk/file?
                    :handler (fn [ctx {:keys [kind file] :as event}]
                               (let [m (edn/read-string (slurp path))
@@ -180,7 +180,7 @@
     (when (.exists (java.io.File. path))
       (clojure.java.io/delete-file path))
 
-    (doseq [file (file-seq (java.io.File. "src"))]
+    (doseq [file (file-seq (java.io.File. "src/client/native"))]
       (when (.isFile file)
         (let [file-name (-> (.getPath file)
                             (str/replace (str (System/getProperty "user.dir") "/") ""))

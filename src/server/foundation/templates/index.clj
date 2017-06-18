@@ -7,7 +7,7 @@
 
 (defn render
   [_]
-  (let [bundle "/js/compiled/app.js"
+  (let [bundle "js/compiled/app.js"
         init (str "foundation.app.init();")]
     (html
      [:html

@@ -19,4 +19,4 @@
                         :font-weight "bold"}} "press"]]])))
 
 (defn ^:export init []
-  (reagent/render [:div "lol"] (.getElementById js/document "app")))
+  (reagent/render [app-root] (.getElementById js/document "app")))

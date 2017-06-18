@@ -18,3 +18,4 @@ main.js
 /env/dev/env/dev.cljs
 /env/dev/env/index.cljs
 resources/public/js/compiled
+.nrepl-history
