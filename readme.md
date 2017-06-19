@@ -2,7 +2,17 @@
 
 ### Server 
 
+```
+boot
+``` 
+
+and then `(reset)` to start the backend system
+
 ### Web 
+
+```
+boot dev-web
+```
 
 ### Native apps
 
@@ -15,7 +25,9 @@
     yarn global add exp
 ```
 
-#### Install [Lein](http://leiningen.org/#install) or [Boot](https://github.com/boot-clj/boot)
+#### Install [Boot](https://github.com/boot-clj/boot)
+
+```brew install boot-clj```
 
 #### Install npm modules
 
@@ -31,14 +43,10 @@
 
 #### Start the figwheel server and cljs repl
 
-##### leiningen users
-``` shell
-    lein figwheel
-```
 
 ##### boot users
 ``` shell
-    boot dev
+    boot dev-native
 
     ;; then input (cljs-repl) in the connected clojure repl to connect to boot cljs repl
 ```
@@ -71,12 +79,6 @@ Since Figwheel already does those.
 
 ### Production build (generates js/externs.js and main.js)
 
-#### leiningen users
-``` shell
-lein prod-build
-```
-
-#### boot users
 ``` shell
 boot prod
 ```
