@@ -20,14 +20,3 @@
 
 (defn new-database []
   (map->Database {}))
-
-(defprotocol DataLayer
-  "A simple protocol describing foundation's data layer"
-  (init! [this entity-name schema]
-    "effectful method to initialise things related to an entity (ex: create tables)")
-  (query-nested
-    [this entity-name linked-entity ctx params value]
-    "method to query a one-to-one linked entity")
-  (query-parent
-    [this entity-name linked-entity ctx params value]
-    "method to query a one-to-one parent entity"))

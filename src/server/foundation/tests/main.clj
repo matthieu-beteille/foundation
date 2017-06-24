@@ -1,149 +1,69 @@
 (ns foundation.tests.main
-  (:require  [clojure.test :refer [deftest is testing]]
+  (:require  [clojure.test :refer [deftest is testing use-fixtures]]
+             [clojure.pprint :refer [pprint]]
              [foundation.utils :as utils]
+             [foundation.data-layer :as data]
              [foundation.db :as db]
+             [foundation.tests.fixtures :as f]
              [clojure.java.jdbc :as j]
-             [com.walmartlabs.lacinia.util :refer [attach-resolvers]]
-             [com.walmartlabs.lacinia :refer [execute]]
-             [com.walmartlabs.lacinia.schema :as schema]))
+             [com.walmartlabs.lacinia :refer [execute]]))
 
-(comment (deftest gen-query-hander
-           (testing "gen-query-handler: sql query generator."
-             (is (= (utils/gen-query-handler :fruit
-                                             {:name "apple"})
-                    "select * from fruit where name = \"apple\""))
-             (is (= (utils/gen-query-handler :user
-                                             {:description "description123"
-                                              :id 123456})
-                    "select * from user where description = \"description123\" and id = 123456")))))
+(def data-layer (data/new-mysql-data-layer db/db-spec))
+(def testql nil)
+(def query-fn nil)
 
-(try
-  (j/db-do-commands db/db-spec
-                    (j/drop-table-ddl :user
-                                      :address))
-  (catch Exception e (str "caught exception: " (.getMessage e))))
+(defn my-test-fixture [f]
+  (alter-var-root #'testql (constantly (utils/create-lacinia data-layer [f/address f/user])))
+  (alter-var-root #'query-fn (constantly  #(execute testql % nil nil)))
+  (f/insert-data! db/db-spec)
+  (f)
+  (f/drop-tables! db/db-spec))
 
-(def address (utils/gen-lacinia-sch :address
-                                    '{:id {:type ID
-                                           :q true}
-                                      :user {:type :user
-                                             :relation :belongs-to}
-                                      :postcode {:type String}
-                                      :line1 {:type String}
-                                      :line2 {:type String}
-                                      :city {:type String}}))
+(use-fixtures :once my-test-fixture)
 
-((get-in address [:utils :create-table]) db/db-spec)
-
-(def user (utils/gen-lacinia-sch :user
-                                 '{:id {:type ID
-                                        :q true}
-                                   :username {:type String
-                                              :q true}
-                                   :description {:type String}
-                                   :address {:type :address
-                                             :relation :has-one}
-                                   :friends {:type :user
-                                             :relation :has-many}}))
-
-((get-in user [:utils :create-table]) db/db-spec)
-
-(clojure.pprint/pprint (merge (:resolvers user)
-                              (:resolvers address)))
-
-(clojure.pprint/pprint (merge (:queries user)
-                              (:queries address)))
-
-(clojure.pprint/pprint {:user (:schema user)
-                        :address (:schema address)})
-
-(def testql (-> {:objects {:user (:schema user)
-                           :address (:schema address)}
-                 :queries (merge (:queries user)
-                                 (:queries address))}
-                (attach-resolvers (merge (:resolvers user)
-                                         (:resolvers address)))
-                schema/compile))
-
-(def query-fn #(execute testql % nil nil))
-
-(query-fn "{ user(id: 1) { username } }")
-
-(def juan-address {:postcode "SW111EA"
-                   :line1 "137LavenderSweep"
-                   :line2 "we"
-                   :city "London"})
-
-(def sanjay-address {:postcode "ABCCURRY123"
-                     :line1 "23 bollywood road"
-                     :city "Bombay"})
-
-(def stefan-address {:postcode "IAMFAT123"
-                     :line1 "some random shitty place"
-                     :city "Amsterdam"})
-
-(def william-address {:postcode "SE153UA"
-                      :line1 "some shitty place in Pekcham"
-                      :city "London"})
-
-
-(def juan {:username "juanito"
-           :description "whiny churros"
-           :address 1})
-
-(def stefan {:username "stefan"
-             :description "fat racist dutch"
-             :address 2})
-
-(def sanjay {:username "sanjay"
-             :description "curry and stupid jokes"
-             :address 3})
-
-(def william {:username "william"
-              :description "bitcoins and dogshite"
-              :address "4"})
-
-(j/insert! db/db-spec :address juan-address)
-(j/insert! db/db-spec :address stefan-address)
-(j/insert! db/db-spec :address sanjay-address)
-(j/insert! db/db-spec :address william-address)
-(j/insert! db/db-spec :user juan)
-(j/insert! db/db-spec :user stefan)
-(j/insert! db/db-spec :user sanjay)
-(j/insert! db/db-spec :user william)
-
+(deftest main-query
+  (testing "should be able to query by a combination of all q fields"
+    (let [query "{ user(username: \"juanito\") { username, description } }"]
+      (is (= (:data (query-fn query))
+             {:user (list (select-keys f/juan [:username :description]))}))))
+  (let [query "{ user(username: \"juanito\", id: 1) { username, description } }"]
+    (is (= (:data (query-fn query))
+           {:user (list (select-keys f/juan [:username :description]))})))
+  (let [query "{ address(postcode: \"SW111EA\") { postcode } }"]
+    (is (= (:data (query-fn query))
+           {:address (list (select-keys f/juan-address [:postcode]))}))))
 
 (deftest own-fields
   (testing "should return some of its own fields"
     (let [query "{ user(username:\"juanito\") { username, description } }"]
       (is (= (:data (query-fn query))
-             {:user (list (select-keys juan [:username :description]))})))))
+             {:user (list (select-keys f/juan [:username :description]))})))))
 
 (deftest one-to-one-relationship
   (testing "should return nested entity one: has-one"
     (let [query "{ user(username: \"juanito\") { username, description, address { postcode, line1, city } } }"]
       (is (= (:data (query-fn query))
              {:user (list (assoc
-                           (select-keys juan [:username :description])
+                           (select-keys f/juan [:username :description])
                            :address
-                           (select-keys juan-address [:postcode :line1 :city])))})))
+                           (select-keys f/juan-address [:postcode :line1 :city])))})))
 
     (testing "should return parent entity: belongs-to"
       (let [query "{ address(id: 1) { postcode,  user { username } } }"]
         (is (= (:data (query-fn query))
-               {:address (list (assoc (select-keys juan-address [:postcode])
-                                      :user (select-keys juan [:username])))}))))
+               {:address (list (assoc (select-keys f/juan-address [:postcode])
+                                      :user (select-keys f/juan [:username])))}))))
 
     (testing "should return nested and itself again in the nested entity"
       (let [query "{ user(username: \"juanito\") { username, description, address { postcode, line1, city, user { username  } } } }"]
         (is (= (:data (query-fn query))
                {:user (list (assoc
-                             (select-keys juan [:username :description])
+                             (select-keys f/juan [:username :description])
                              :address
                              (assoc
-                              (select-keys juan-address [:postcode :line1 :city])
+                              (select-keys f/juan-address [:postcode :line1 :city])
                               :user
-                              (select-keys juan [:username]))))}))))))
+                              (select-keys f/juan [:username]))))}))))))
 
 (comment (deftest one-to-many-relationship
            (testing "should return list of nested entities"

@@ -1,6 +1,8 @@
 (ns foundation.data-layer
   (:require [clojure.java.jdbc :as j]))
 
+(comment "for now we only have mysql but we can easily swap the data layer, we'll just have to reimplement the following interface")
+
 (defprotocol DataLayer
   "A simple protocol describing foundation's data layer"
   (init! [this entity-name schema]
@@ -14,14 +16,15 @@
     [this entity-name linked-entity ctx params value]
     "returns a one-to-one parent entity."))
 
-(def needs-fk #{:has-one :belongs-to})
+(def needs-fk #{:has-one})
 
-(defn quote-unquote
+(defn- quote-unquote
   [value]
   (let [quote (when (string? value) "\"")]
     (str quote value quote)))
 
-(defn to-sql-type
+(defn- to-sql-type
+  "graphql to mysql type mapping"
   [field {:keys [type]} is-fk?]
   (cond
     is-fk? "int"
@@ -47,6 +50,7 @@
                           (apply str))
                      " ) ENGINE=INNODB;")]
       (j/execute! db-spec query)))
+
   (find
     [db-spec entity-name context params value]
     (let [query (str "SELECT * FROM " entity-name " WHERE "
@@ -55,12 +59,14 @@
                           (interpose " AND ")
                           (apply str)))]
       (j/query db-spec [query])))
+
   (get-one-nested-entity
     [db-spec entity-name linked-entity context params value]
     (let [linked-entity-name (name linked-entity)
           query  (str "SELECT * FROM " linked-entity-name
                       " WHERE id = " (get value linked-entity))]
       (first (j/query db-spec [query]))))
+
   (get-one-parent-entity
     [db-spec entity-name linked-entity context params value]
     (let [linked-entity-name (name linked-entity)
