@@ -4,19 +4,19 @@
  :dependencies '[[ajchemist/boot-figwheel "0.5.4-6" :scope "test"] ;; latest release
                  [org.clojure/tools.nrepl "0.2.12" :scope "test"]
                  [com.cemerick/piggieback "0.2.1" :scope "test"]
-                 [figwheel-sidecar "0.5.4-7" :scope "test"]
+                 [figwheel-sidecar "0.5.10" :scope "test"]
                  [react-native-externs "0.0.2-SNAPSHOT" :scope "test"]
                  ;; clojure/clojurescript
-                 [org.clojure/clojure "1.9.0-alpha10"]
+                 [org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.293"]
                  ;; server side deps
+                 [adzerk/boot-test "1.2.0" :scope "test"]
                  [com.stuartsierra/component "0.3.2"]
                  ;; mysql
                  [yesql "0.5.3"]
                  [mysql/mysql-connector-java "5.1.32"]
                  [org.clojure/data.json "0.2.6"]
                  [com.walmartlabs/lacinia "0.17.0"]
-                 [ring.middleware.logger "0.5.0"]
                  [compojure "1.5.0"]
                  [ring/ring-json "0.4.0"]
                  [ring/ring-defaults "0.2.0"]
@@ -32,16 +32,21 @@
  '[boot-figwheel :refer [figwheel cljs-repl]]
  '[cljs.build.api :as b]
  '[user :as user]
- '[externs :as externs])
+ '[externs :as externs]
+ '[adzerk.boot-test :refer :all])
 
 (require 'boot.repl)
 (swap! boot.repl/*default-middleware*
        conj 'cemerick.piggieback/wrap-cljs-repl)
 
+(deftask preptest []
+  (set-env! :source-paths #{"src/server"})
+  identity)
+
 (deftask dev-native
   "boot dev, then input (cljs-repl)"
   []
-  (set-env! #(conj % "src/client/native"))
+  (set-env! :source-paths #(conj % "src/client/native"))
   (user/prepare)
   (comp
    (figwheel
@@ -54,7 +59,7 @@
                                  :optimizations :none
                                  :output-dir    "."}}]
     :figwheel-options {:open-file-command "emacsclient"
-                       :validate-config false})
+                       :validate-tconfig false})
    (repl)))
 
 (deftask web-dev
@@ -82,7 +87,7 @@
 
 (deftask prod
   []
-  (set-env! #(conj % "src/client/native"))
+  (set-env! :source-paths #(conj % "src/client/native"))
   (externs/-main)
   (println "Start to compile clojurescript ...")
   (let [start (System/nanoTime)]

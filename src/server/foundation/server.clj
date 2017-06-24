@@ -3,7 +3,6 @@
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.json :refer [wrap-json-params]]
-            [ring.middleware.logger :refer [wrap-with-logger]]
             [ring.util.response :refer [response]]
             [environ.core :refer [env]]
             [clojure.tools.logging :as log]
@@ -21,8 +20,7 @@
   Lifecycle
   (start [component]
     (log/info ";; Starting foundation server")
-    (let [wrap-logger (if is-dev-mode? identity wrap-with-logger)
-          wrap-dependencies (fn [handler]
+    (let [wrap-dependencies (fn [handler]
                               (fn [request]
                                 (handler (assoc request
                                                 :database database))))

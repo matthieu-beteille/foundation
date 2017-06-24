@@ -6,40 +6,63 @@
             [com.walmartlabs.lacinia.schema :as schema]
             [clojure.data.json :as json]))
 
-(defqueries "foundation/models/user.sql" {:connection db/db-spec})
+(comment
+  (defqueries "foundation/models/user.sql" {:connection db/db-spec})
 
-;; grapqhl playground
+  (create-address!)
 
-(create-users!)
+  (create-addr<! {:postcode "sw111pj"})
 
-(create-user<! {:username "pierre" :description "ma description"})
+  ;; grapqhl playground
 
-(def schema
-  '{:objects
-    {:user
-     {:fields {:id {:type Int}
-               :username {:type String}
-               :description {:type String}}}}
-    :queries
-    {:user {:type (non-null :user)
-            :args {:username {:type String}}
-            :resolve :get-user}}})
+  (create-users!)
 
-(defn get-user [context arguments value]
-  (first (get-users-by-username arguments)))
+  (create-user<!
+   {:username "pierre"
+    :address 1
+    :description "ma description"})
 
-(get-user nil {:username "matthieu"} nil)
+  (get-user-address {:id 1})
 
-(def test
-  (-> schema
-      (attach-resolvers {:get-user get-user})
-      schema/compile))
+  (def schema
+    '{:objects
+      {:address {:fields {:id {:type Int}
+                          :postcode {:type String}}}
+       :user
+       {:fields {:id {:type Int}
+                 :username {:type String}
+                 :address {:type :address
+                           :resolve :get-user-address}
+                 :description {:type String}}}}
+      :queries
+      {:user {:type (non-null :user)
+              :args {:username {:type String}}
+              :resolve :get-user}}})
 
-(def query "{
-  user(username: \"matthieu\") {
+  (defn get-house [context arguments value]
+    value)
+
+  (defn get-address [context arguments value]
+    100)
+
+  (defn get-user [context arguments value]
+    (first (get-users-by-username arguments)))
+
+  (get-user nil {:username "matthieu"} nil)
+
+  (def test
+    (-> schema
+        (attach-resolvers {:get-user get-user
+                           :get-user-address get-address})
+        schema/compile))
+
+  (def query "{
+  user(username: \"pierre\") {
     username,
-    description
+    description,
+    address
   }
-}")
+  }")
 
-(execute test query nil nil)
+  (execute test query nil nil)
+  )
