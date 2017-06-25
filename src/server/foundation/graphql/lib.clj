@@ -1,5 +1,6 @@
 (ns foundation.graphql.lib
   (:require [clojure.spec :as s]
+            [clojure.pprint :refer [pprint]]
             [foundation.utils :as utils]
             [foundation.db :as db]
             [foundation.graphql.data-layer :as data]
@@ -8,17 +9,24 @@
             [com.walmartlabs.lacinia.schema :as schema]))
 
 (s/def ::type (s/or :scalar #{'Int 'String 'ID 'Float 'Boolean}
-                    :object keyword?))
+                    :object keyword?
+                    :adt (s/cat :modifier #{(symbol 'list) (symbol 'non-null)}
+                                :type ::type)))
 (s/def ::q #{true false})
-(s/def ::relation #{:has-one :belongs-to :has-many})
-(s/def ::field (s/keys ::req-un [::type]
-                       :opt-un [::q ::relations]))
-(s/def ::schema (s/map-of keyword? ::field))
+(s/def ::relation #{:has-one :belongs-to :has-many :has-and-belongs-to-many})
+(s/def ::relation-name keyword?)
+(s/def ::as keyword?)
+(s/def ::field (s/keys :req-un [::type]
+                       :opt-un [::q ::relations ::as ::relation-name]))
+(s/def ::fields (s/map-of keyword? ::field))
+(s/def ::name keyword?)
+(s/def ::schema (s/keys :req-un [::name
+                                 ::fields]))
 
 (defn remove-data
   [schema]
   (into {} (map  #(-> [(first %)
-                       (dissoc (second %) :q :relation :through)])
+                       (dissoc (second %) :q :relation :as)])
                  schema)))
 
 (defn get-resolver
@@ -29,7 +37,9 @@
     :belongs-to
     (partial data/query-one-parent-entity data-layer entity-name field field-spec)
     :has-many
-    (partial data/query-many-nested-entities data-layer entity-name field field-spec)))
+    (partial data/query-many-nested-entities data-layer entity-name field field-spec)
+    :has-and-belongs-to-many
+    (partial data/query-many-to-many-entities data-layer entity-name field field-spec)))
 
 (defn handle-relations
   [data-layer q-fields entity-name res [field spec]]
@@ -64,7 +74,7 @@
         query             {:type (list (symbol 'list) entity)
                            :resolve resolver-id
                            :args (entity q-fields)}]
-    (data/init! data-layer entity-name schema)
+    (data/init-each! data-layer entity-name schema)
     {:name      entity
      :schema    {:fields fields}
      :queries   {entity query}
@@ -76,10 +86,14 @@
              (filter (comp :q second)) 
              (remove-data))])
 
+(s/def ::schemas (s/+ ::schema))
+
 (defn create-graphql
   ([schemas]
    (create-graphql (data/new-mysql-data-layer db/db-spec) schemas))
   ([data-layer schemas]
+   (when-not (s/valid? ::schemas schemas)
+     (pprint (s/explain-data ::schemas schemas)))
    (let [q-fields  (into {} (map get-q-fields schemas)) ;; first figure out the q fiels for each schema
          schemas   (map (partial gen-lacinia-sch data-layer q-fields) schemas) ;; then generate the schemas
          objects   (into {} (map #(-> [(:name %) (:schema %)]) schemas))
@@ -89,6 +103,7 @@
          resolvers (->> schemas
                         (map :resolvers)
                         (apply merge))]
+     (data/init! data-layer schemas)
      (-> {:objects objects
           :queries queries}
          (attach-resolvers resolvers)

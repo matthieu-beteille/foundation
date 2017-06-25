@@ -17,7 +17,9 @@
                             (lib/create-graphql data-layer
                                                 [f/user
                                                  f/address
-                                                 f/dog])))
+                                                 f/dog
+                                                 f/author
+                                                 f/book])))
   (alter-var-root #'query-fn (constantly  #(execute testql % nil nil)))
   (f/insert-data! db/db-spec)
   (f)
@@ -30,7 +32,8 @@
     (let [query "{ user { username } }"]
       (is (= (:data (query-fn query))
              {:user (map #(select-keys % [:username])
-                         [f/juan f/stefan f/sanjay f/william])}))))
+                         (concat [f/juan f/stefan f/sanjay f/william]
+                                 f/friends))}))))
 
   (testing "should be able to query by a combination of all q fields"
     (let [query "{ user(username: \"juanito\") { username, description } }"]
@@ -50,7 +53,10 @@
              {:dog (list {:breed "breed-1"})})))
     (let [query "{ dog(breed: \"breed-27\") { name, breed } }"]
       (is (= (:data (query-fn query))
-             {:dog (list {:breed "breed-27" :name "dog-27"})})))))
+             {:dog (list {:breed "breed-27" :name "dog-27"})})))
+    (let [query "{ dog(breed: \"breed-27\", name: \"breed-40\") { name, breed } }"]
+      (is (= (:data (query-fn query))
+             {:dog '()})))))
 
 (deftest own-fields
   (testing "should return some of its own fields"
@@ -102,12 +108,14 @@
              {:user (list (assoc
                            (select-keys f/stefan [:username])
                            :dogs (map #(select-keys % [:breed]) f/dogs)))}))))
+
   (testing "should return parent entity"
     (let [query "{ dog(id: 1) { name, owner { username } } }"]
       (is (= (:data (query-fn query))
              {:dog (list (assoc
                            (select-keys f/sausage-dog [:name])
                            :owner (select-keys f/juan [:username])))}))))
+
   (testing "should accept any of the q fields as a subquery"
     (let [query "{ user(id: 2) { dogs(name: \"dog-1\") { name } } }"]
       (is (= (:data (query-fn query))
@@ -118,3 +126,31 @@
     (let [query "{ user(id: 2) { dogs(breed: \"breed-14\") { name, breed, owner { id } } } }"]
       (is (= (:data (query-fn query))
              {:user (list {:dogs (list {:name "dog-14" :breed "breed-14" :owner {:id "2"}})})})))))
+
+(deftest many-to-many-relationship
+  (testing "should retrieve list of nested entities"
+    (let [query "{ user(username: \"juanito\") { username, friends { username } } }"]
+      (is (= (:data (query-fn query))
+             {:user (list {:username "juanito"
+                           :friends (map #(select-keys % [:username]) f/friends)})})))
+    (let [query "{ user(username: \"juanito\") { username, friends(username: \"friend-1\") { username } } }"]
+      (is (= (:data (query-fn query))
+             {:user (list {:username "juanito"
+                           :friends (list {:username "friend-1"})})})))
+    (let [query "{ author(id:1) { name, books { title } } }"]
+      (pprint (query-fn query))
+      (is (= (:data (query-fn query))
+             {:author (list {:name "author-0"
+                           :books (list {:title "book-0"}
+                                        {:title "book-1"}
+                                        {:title "book-2"})})})))
+    (let [query "{ book(id:1) { title, authors { name } } }"]
+      (is (= (:data (query-fn query))
+             {:book (list {:title "book-0"
+                           :authors (list {:name "author-0"}
+                                          {:name "author-1"}
+                                          {:name"author-2"})})}))))
+  (testing "should retrieve empty list"
+    (let [query " { user(username: \"friend-1\") { username, friends { username } } }"]
+      (is (= (:data (query-fn query))
+             {:user (list {:username "friend-1" :friends '()})})))))

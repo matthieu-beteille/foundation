@@ -14,6 +14,24 @@
              :line2 {:type String}
              :city {:type String}}})
 
+(def author
+  {:name :author
+   :fields '{:id {:type ID
+                  :q true}
+             :name {:type String}
+             :books {:type (list :book)
+                     :relation :has-and-belongs-to-many
+                     :relation-name :author_book}}})
+
+(def book
+  {:name :book
+   :fields '{:id {:type ID
+                  :q true}
+             :title {:type String}
+             :authors {:type (list :author)
+                       :relation :has-and-belongs-to-many
+                       :relation-name :author_book}}})
+
 (def dog
   {:name :dog
    :fields '{:id {:type ID
@@ -34,9 +52,12 @@
              :description {:type String}
              :address {:type :address
                        :relation :has-one}
+             :friends {:type (list :user)
+                       :relation :has-and-belongs-to-many
+                       :relation-name :friendship}
              :dogs {:type (list :dog)
                     :relation :has-many
-                    :through :owner}}})
+                    :as :owner}}})
 
 (def juan-address {:postcode "SW111EA"
                    :line1 "137LavenderSweep"
@@ -81,7 +102,19 @@
 
 (def dogs (into [] (map #(-> {:name (str "dog-" %)
                               :breed (str "breed-" %)
-                              :owner 2}) (range 50))))
+                              :owner 2})
+                        (range 50))))
+
+(def friends (into [] (map #(-> {:username (str "friend-" %)
+                                 :description (str "description-" %)})
+                           (range 50))))
+
+
+(def authors (into [] (map #(-> {:name (str "author-" %)})
+                           (range 4))))
+
+(def books (into [] (map #(-> {:title (str "book-" %)})
+                           (range 5))))
 
 (defn insert-data!
   [db]
@@ -96,10 +129,29 @@
   (j/insert! db :dog sausage-dog)
   (j/insert! db :dog pug)
   (doseq [dog dogs]
-    (j/insert! db :dog dog)))
+    (j/insert! db :dog dog))
+  (doseq [book books]
+    (j/insert! db :book book))
+  (doseq [author authors]
+    (j/insert! db :author author))
+  (j/insert! db :author_book {:author 1 :book 1}) ; author 1 has 3 books
+  (j/insert! db :author_book {:author 1 :book 2})
+  (j/insert! db :author_book {:author 1 :book 3})
+  (j/insert! db :author_book {:book 1 :author 2}) ; book 1 has 2 authors
+  (j/insert! db :author_book {:book 1 :author 3})
+  (doseq [friend friends]
+    (let [inserted (j/insert! db :user friend)]
+      (j/insert! db :friendship {:user 1
+                                 :linked_user (:generated_key (first inserted))}))))
 
-(defn drop-tables! 
+(def db db/db-spec)
+
+(defn drop-tables!
   [db]
-  (j/db-do-commands db ["DROP TABLE IF EXISTS `address`"
+  (j/db-do-commands db ["DROP TABLE IF EXISTS `friendship`"
+                        "DROP TABLE IF EXISTS `author_book`"
+                        "DROP TABLE IF EXISTS `author`"
+                        "DROP TABLE IF EXISTS `book`"
+                        "DROP TABLE IF EXISTS `address`"
                         "DROP TABLE IF EXISTS `dog`"
-                        "DROP TABLE IF EXISTS `user`"]))
+                        "DROP TABLE IF EXISTS `user`"])) 
