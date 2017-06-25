@@ -13,7 +13,11 @@
 (def query-fn nil)
 
 (defn my-test-fixture [f]
-  (alter-var-root #'testql (constantly (utils/create-lacinia data-layer [f/address f/user])))
+  (alter-var-root #'testql (constantly
+                            (utils/create-lacinia data-layer
+                                                  [f/user
+                                                   f/address
+                                                   f/dog])))
   (alter-var-root #'query-fn (constantly  #(execute testql % nil nil)))
   (f/insert-data! db/db-spec)
   (f)
@@ -26,6 +30,9 @@
     (let [query "{ user(username: \"juanito\") { username, description } }"]
       (is (= (:data (query-fn query))
              {:user (list (select-keys f/juan [:username :description]))}))))
+  (let [query "{ user(id: 1) { username, description } }"]
+    (is (= (:data (query-fn query))
+           {:user (list (select-keys f/juan [:username :description]))})))
   (let [query "{ user(username: \"juanito\", id: 1) { username, description } }"]
     (is (= (:data (query-fn query))
            {:user (list (select-keys f/juan [:username :description]))})))
@@ -49,7 +56,7 @@
                            (select-keys f/juan-address [:postcode :line1 :city])))})))
 
     (testing "should return parent entity: belongs-to"
-      (let [query "{ address(id: 1) { postcode,  user { username } } }"]
+      (let [query "{ address(postcode: \"SW111EA\") { postcode,  user { username } } }"]
         (is (= (:data (query-fn query))
                {:address (list (assoc (select-keys f/juan-address [:postcode])
                                       :user (select-keys f/juan [:username])))}))))
@@ -65,11 +72,27 @@
                               :user
                               (select-keys f/juan [:username]))))}))))))
 
-(comment (deftest one-to-many-relationship
-           (testing "should return list of nested entities"
-             (let [query "{ user(username: \"juanito\" { username, description, friends { username } }}"]
-               (is (= (:data (query-fn query))
-                      {:user (list (assoc
-                                    (select-keys juan [:username :description])
-                                    :friends [(select-keys stefan [:username])
-                                              (select-keys sanjay [:username])]))}))))))
+(deftest one-to-many-relationship
+  (testing "should return list of nested entities"
+    (let [query "{ user(username: \"juanito\") { username, description, dogs { name } }}"]
+      (is (= (:data (query-fn query))
+             {:user (list (assoc
+                           (select-keys f/juan [:username :description])
+                           :dogs [(select-keys f/sausage-dog [:name])
+                                  (select-keys f/pug [:name])]))})))
+    (let [query "{ user(id: 2) { username, dogs { name } }}"]
+      (is (= (:data (query-fn query))
+             {:user (list (assoc
+                           (select-keys f/stefan [:username])
+                           :dogs (map #(select-keys % [:name]) f/dogs)))})))
+    (let [query "{ user(id: 2) { username, dogs { breed } }}"]
+      (is (= (:data (query-fn query))
+             {:user (list (assoc
+                           (select-keys f/stefan [:username])
+                           :dogs (map #(select-keys % [:breed]) f/dogs)))}))))
+  (testing "should return parent entity"
+    (let [query "{ dog(id: 1) { name, owner { username } } }"]
+      (is (= (:data (query-fn query))
+             {:dog (list (assoc
+                           (select-keys f/sausage-dog [:name])
+                           :owner (select-keys f/juan [:username])))})))))

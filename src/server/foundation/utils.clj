@@ -21,33 +21,22 @@
                        (dissoc (second %) :q :relation)])
                  schema)))
 
-(def user
-  '{:id {:type ID
-         :q true}
-    :username {:type String
-               :q true}
-    :description {:type String}
-    :address {:type :address
-              :relation :has-one}
-    :friends {:type :user
-              :relation :has-many}})
-
 (defn get-resolver
-  [data-layer entity-name relation field]
+  [data-layer entity-name relation field field-spec]
   (case relation
     :has-one
-    (partial data/get-one-nested-entity data-layer entity-name field)
+    (partial data/query-one-nested-entity data-layer entity-name field field-spec)
     :belongs-to
-    (partial data/get-one-parent-entity data-layer entity-name field)
+    (partial data/query-one-parent-entity data-layer entity-name field field-spec)
     :has-many
-    #(-> {:test "ok"})))
+    (partial data/query-many-nested-entities data-layer entity-name field field-spec)))
 
 (defn handle-relations
   [data-layer entity-name field spec res]
   (let [has-relation? (:relation spec)]
     (if has-relation?
       (let [resolver-id (keyword (str "get-" entity-name "-" (name field)))
-            resolver (get-resolver data-layer entity-name (:relation spec) field)]
+            resolver (get-resolver data-layer entity-name (:relation spec) field spec)]
         (-> res
             (update-in [:fields] #(assoc % field (assoc spec :resolve resolver-id)))
             (update-in [:resolvers] #(assoc % resolver-id resolver))))
@@ -81,7 +70,7 @@
                  resolvers
                  fields]}  (process-schema data-layer entity-name schema)
          resolver-id       (keyword (str "get-" entity-name))
-         query-function    (partial data/find data-layer entity-name)
+         query-function    (partial data/query data-layer entity-name)
          query             {:type (list (symbol 'list) entity)
                             :resolve resolver-id
                             :args (->> q-fields
