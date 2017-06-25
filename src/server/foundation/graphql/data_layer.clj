@@ -1,5 +1,6 @@
-(ns foundation.data-layer
-  (:require [clojure.java.jdbc :as j]))
+(ns foundation.graphql.data-layer
+  (:require [clojure.java.jdbc :as j]
+            [foundation.utils :as utils]))
 
 (comment "for now we only have mysql but in the future we can easily swap the data layer, we'll just have to reimplement the following interface")
 
@@ -11,18 +12,13 @@
     "query method to retrieve an entity.")
   (query-one-nested-entity
     [this entity-name field field-spec ctx params value]
-    "returns a one-to-one linked entity. (:belongs-to side")
+    "returns a one-to-one linked entity. (:belongs-to side)")
   (query-one-parent-entity
     [this entity-name field field-spec ctx params value]
     "returns a one-to-one parent entity. (:has-one side)")
   (query-many-nested-entities
     [this entity-name field field-spec ctx params value]
     "returns multiple has-many nested entities "))
-
-(defn- quote-unquote
-  [value]
-  (let [quote (when (string? value) "\"")]
-    (str quote value quote)))
 
 (defn- to-sql-type
   "graphql to mysql type mapping"
@@ -53,15 +49,19 @@
                                 field-name "`) REFERENCES "
                                 (name field-type) "(`id`)"))))))
 
-(defn get-entity-name
-  [type]
-  (cond
-    (keyword? type) (name type)
-    (list? type)    (name (second type))
-    :default
-    (throw (Exception. "entity type should be another entity identifier (or a list of another entity identifier"))))
+(defn add-parameters
+  ([params]
+   (add-parameters "" params))
+  ([prefix params]
+   (if params
+     (str " " prefix " "
+          (->> params
+               (map (fn [[key value]] (str (name key) " = "  (utils/quote-unquote value))))
+               (interpose " AND ")
+               (apply str)))
+     "")))
 
-(defrecord MySQL [db-spec]
+(defrecord MySQL [dbtype dbname host user password]
   DataLayer
   (init!
     [db-spec entity-name schema]
@@ -77,34 +77,34 @@
 
   (query
     [db-spec entity-name context params value]
-    (let [query (str "SELECT * FROM " entity-name " WHERE "
-                     (->> params
-                          (map (fn [[key value]] (str (name key) " = "  (quote-unquote value))))
-                          (interpose " AND ")
-                          (apply str)))]
+    (let [query (str "SELECT * FROM " entity-name
+                     (add-parameters "WHERE" params))]
       (j/query db-spec [query])))
 
   (query-one-parent-entity
     [db-spec entity-name field field-spec context params value]
-    (let [linked-entity-name (get-entity-name (:type field-spec))
+    (let [linked-entity-name (utils/get-entity-name (:type field-spec))
           query              (str "SELECT * FROM " linked-entity-name
-                                  " WHERE id = " (get value field))]
+                                  " WHERE id = " (get value field)
+                                  (add-parameters "AND" params))]
       (first (j/query db-spec [query]))))
 
   (query-one-nested-entity
     [db-spec entity-name field field-spec context params value]
-    (let [linked-entity-name (get-entity-name (:type field-spec))
+    (let [linked-entity-name (utils/get-entity-name (:type field-spec))
           fk                 (get-fk entity-name field-spec)
           query              (str "SELECT * FROM " linked-entity-name
-                                  " WHERE " fk " = " (:id value))]
+                                  " WHERE " fk " = " (:id value)
+                                  (add-parameters "AND" params))]
       (first (j/query db-spec [query]))))
 
   (query-many-nested-entities
     [db-spec entity-name field field-spec context params value]
-    (let [linked-entity-name (get-entity-name (:type field-spec))
+    (let [linked-entity-name (utils/get-entity-name (:type field-spec))
           fk                 (get-fk entity-name field-spec) 
           query              (str "SELECT * FROM " linked-entity-name
-                                  " WHERE " fk " = " (:id value))]
+                                  " WHERE " fk " = " (:id value)
+                                  (add-parameters "AND" params))]
       (j/query db-spec [query]))))
 
 (defn new-mysql-data-layer

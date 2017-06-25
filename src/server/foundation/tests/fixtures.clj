@@ -1,6 +1,5 @@
 (ns foundation.tests.fixtures
-  (:require [foundation.utils :as utils]
-            [foundation.db :as db]
+  (:require [foundation.db :as db]
             [clojure.java.jdbc :as j]))
 
 (def address
