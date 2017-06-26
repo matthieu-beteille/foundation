@@ -1,6 +1,22 @@
-## foundation
+# foundation
 
-### Server 
+## Server 
+
+### To run the tests (temporary)
+
+``` 
+./infra/mysql.sh
+boot preptest test
+```
+
+and in watch mode:
+
+``` 
+./infra/mysql.sh
+boot preptest watch test
+```
+
+### To run the server
 
 ```
 boot
@@ -8,13 +24,13 @@ boot
 
 and then `(reset)` to start the backend system
 
-### Web 
+## Web 
 
 ```
 boot dev-web
 ```
 
-### Native apps
+## Native apps
 
 ### Usage
 
