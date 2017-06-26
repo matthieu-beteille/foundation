@@ -138,7 +138,6 @@
              {:user (list {:username "juanito"
                            :friends (list {:username "friend-1"})})})))
     (let [query "{ author(id:1) { name, books { title } } }"]
-      (pprint (query-fn query))
       (is (= (:data (query-fn query))
              {:author (list {:name "author-0"
                            :books (list {:title "book-0"}
@@ -149,7 +148,7 @@
              {:book (list {:title "book-0"
                            :authors (list {:name "author-0"}
                                           {:name "author-1"}
-                                          {:name"author-2"})})}))))
+                                          {:name "author-2"})})}))))
   (testing "should retrieve empty list"
     (let [query " { user(username: \"friend-1\") { username, friends { username } } }"]
       (is (= (:data (query-fn query))

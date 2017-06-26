@@ -1,5 +1,6 @@
 (ns foundation.graphql.data-layer
   (:require [clojure.java.jdbc :as j]
+            [clojure.spec :as s]
             [foundation.utils :as utils]))
 
 (comment "for now we only have mysql but in the future we can easily swap the data layer, we'll just have to reimplement the following interface")
@@ -86,6 +87,14 @@
          "FOREIGN KEY (`" fk-name "`) REFERENCES " linked-entity-name "(`id`)"
          ");")))
 
+(s/def ::dbtype string?)
+(s/def ::dbname string?)
+(s/def ::host string?)
+(s/def ::user string?)
+(s/def ::password string?)
+
+(def data-layer (s/keys :req-un [::dbtype ::dbname ::host ::user ::password]))
+
 (defrecord MySQL [dbtype dbname host user password]
   DataLayer
   (init!
@@ -158,4 +167,3 @@
 (defn new-mysql-data-layer
   [db-spec]
   (map->MySQL db-spec))
-

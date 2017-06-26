@@ -1,5 +1,6 @@
 (ns foundation.graphql.lib
   (:require [clojure.spec :as s]
+            [clojure.spec.test :as st]
             [clojure.pprint :refer [pprint]]
             [foundation.utils :as utils]
             [foundation.db :as db]
@@ -16,12 +17,13 @@
 (s/def ::relation #{:has-one :belongs-to :has-many :has-and-belongs-to-many})
 (s/def ::relation-name keyword?)
 (s/def ::as keyword?)
-(s/def ::field (s/keys :req-un [::type]
-                       :opt-un [::q ::relations ::as ::relation-name]))
+(s/def ::field  (s/keys :req-un [::type]
+                        :opt-un [::q ::relation ::as ::relation-name]))
 (s/def ::fields (s/map-of keyword? ::field))
 (s/def ::name keyword?)
 (s/def ::schema (s/keys :req-un [::name
                                  ::fields]))
+
 
 (defn remove-data
   [schema]
@@ -83,17 +85,17 @@
 (defn get-q-fields
   [{:keys [name fields]}]
   [name (->> fields
-             (filter (comp :q second)) 
+             (filter (comp :q second))
              (remove-data))])
 
-(s/def ::schemas (s/+ ::schema))
+(s/fdef create-graphql
+        :args (s/cat :data-layer data/data-layer
+                     :schemas (s/coll-of ::schema)))
 
 (defn create-graphql
   ([schemas]
    (create-graphql (data/new-mysql-data-layer db/db-spec) schemas))
   ([data-layer schemas]
-   (when-not (s/valid? ::schemas schemas)
-     (pprint (s/explain-data ::schemas schemas)))
    (let [q-fields  (into {} (map get-q-fields schemas)) ;; first figure out the q fiels for each schema
          schemas   (map (partial gen-lacinia-sch data-layer q-fields) schemas) ;; then generate the schemas
          objects   (into {} (map #(-> [(:name %) (:schema %)]) schemas))
@@ -108,3 +110,5 @@
           :queries queries}
          (attach-resolvers resolvers)
          schema/compile))))
+
+(st/instrument `create-graphql)
