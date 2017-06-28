@@ -1,6 +1,7 @@
 (ns foundation.graphql.data-layer
   (:require [clojure.java.jdbc :as j]
             [clojure.spec :as s]
+            [clojure.pprint :refer [pprint]]
             [foundation.utils :as utils]))
 
 (comment "for now we only have mysql but in the future we can easily swap the data layer, we'll just have to reimplement the following interface")
@@ -9,7 +10,7 @@
   "A simple protocol describing foundation's data layer"
   (init! [this schemas]
     "effectul method to initialise things")
-  (init-each! [this entity-name schema]
+  (init-entity! [this entity-name schema]
     "effectful method to initialise things related to an entity (ex: create tables with sql)")
   (query [this entity-name context params value]
     "query method to retrieve an entity.")
@@ -24,7 +25,9 @@
     "returns multiple has-many nested entities")
   (query-many-to-many-entities
     [this entity-name field field-spec ctx params value]
-    "returns multiple many-to-any nested entities"))
+    "returns multiple many-to-any nested entities")
+  (create [this entity-name context params value]
+    "create entity"))
 
 (defn- to-sql-type
   "graphql to mysql type mapping"
@@ -107,7 +110,7 @@
                               schemas)]
       (j/db-do-commands db-spec join-tables)))
 
-  (init-each!
+  (init-entity!
     [db-spec entity-name schema]
     (let [main-table  (str "CREATE TABLE IF NOT EXISTS `" entity-name "` ( "
                            (->> schema
@@ -162,7 +165,12 @@
                      " JOIN " join-table " b ON a.id = b." fk-name
                      " WHERE b." entity-name " = " (:id value)
                      (add-parameters "AND" params))]
-      (j/query db-spec [query]))))
+      (j/query db-spec [query])))
+
+  (create
+    [db-spec entity-name context params value]
+    (let [inserted (j/insert! db-spec (keyword entity-name) params)]
+      params)))
 
 (defn new-mysql-data-layer
   [db-spec]

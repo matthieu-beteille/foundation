@@ -45,19 +45,24 @@
 
 (def user
   {:name :user
-   :fields '{:id {:type ID
-                  :q true}
-             :username {:type String
-                        :q true}
-             :description {:type String}
-             :address {:type :address
-                       :relation :has-one}
-             :friends {:type (list :user)
-                       :relation :has-and-belongs-to-many
-                       :relation-name :friendship}
-             :dogs {:type (list :dog)
-                    :relation :has-many
-                    :as :owner}}})
+   :validation #(not= (:username %) "forbidden-name") ;; example of entity validation, useful when fields depend on each other
+   :fields
+   {:id {:type 'ID
+         :q true}
+    :username {:type 'String
+               :m true
+               :validation #(> (count %) 3)  ;; example of field validation
+               :q true}
+    :description {:type 'String
+                  :m true}
+    :address {:type :address
+              :relation :has-one}
+    :friends {:type '(list :user)
+              :relation :has-and-belongs-to-many
+              :relation-name :friendship}
+    :dogs {:type '(list :dog)
+           :relation :has-many
+           :as :owner}}})
 
 (def juan-address {:postcode "SW111EA"
                    :line1 "137LavenderSweep"

@@ -6,6 +6,7 @@
                  [com.cemerick/piggieback "0.2.1" :scope "test"]
                  [figwheel-sidecar "0.5.10" :scope "test"]
                  [react-native-externs "0.0.2-SNAPSHOT" :scope "test"]
+                 [org.clojure/tools.namespace "0.2.7"]
                  ;; clojure/clojurescript
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.293"]
@@ -31,6 +32,7 @@
 (require
  '[boot-figwheel :refer [figwheel cljs-repl]]
  '[cljs.build.api :as b]
+ '[clojure.tools.namespace.repl :as tools]
  '[user :as user]
  '[externs :as externs]
  '[adzerk.boot-test :refer :all])
@@ -42,6 +44,11 @@
 (deftask preptest []
   (set-env! :source-paths #{"src/server"})
   identity)
+
+(deftask server []
+  (set-env! :source-paths #{"src/server" "env/dev"})
+  (apply tools/set-refresh-dirs (get-env :directories))
+  (repl))
 
 (deftask dev-native
   "boot dev, then input (cljs-repl)"
