@@ -5,6 +5,7 @@
                  [org.clojure/tools.nrepl "0.2.12" :scope "test"]
                  [com.cemerick/piggieback "0.2.1" :scope "test"]
                  [figwheel-sidecar "0.5.10" :scope "test"]
+                 [org.clojure/data.json "0.2.6"]
                  [react-native-externs "0.0.2-SNAPSHOT" :scope "test"]
                  [org.clojure/tools.namespace "0.2.7"]
                  ;; clojure/clojurescript
@@ -24,6 +25,8 @@
                  [environ "1.0.3"]
                  [ring "1.5.1"]
                  [hiccup "1.0.5"]
+                 [buddy/buddy-auth "1.4.1"]
+                 [buddy/buddy-sign "1.5.0"]
                  ;; client side deps
                  [reagent "0.6.0"   :exclusions [cljsjs/react cljsjs/react-dom cljsjs/react-dom-server]]
                  [re-frame "0.9.1"]

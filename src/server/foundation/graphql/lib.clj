@@ -9,6 +9,7 @@
             [clojure.java.jdbc :as j]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.resolve :as resolve]
+            [com.walmartlabs.lacinia.execute :as execute]
             [com.walmartlabs.lacinia.util :refer [attach-resolvers]]
             [com.walmartlabs.lacinia.schema :as schema]))
 
@@ -124,6 +125,10 @@
 (s/fdef create-graphql
         :args (s/cat :data-layer data/data-layer
                      :schemas (s/coll-of ::schema)))
+
+(defn run-query
+  [query schema-comp]
+  (execute schema-comp query nil nil))
 
 (defn create-graphql
   ([schemas]
