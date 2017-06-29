@@ -2,7 +2,5 @@
 
 (def graphql-schema
   {:name :user
-   :fields '{:id {:type ID
-                  :q true}
-             :uid {:type String
-                   :q true}}})
+   :fields '{:username {:type String
+                        :q true}}})

@@ -4,12 +4,11 @@
             [clojure.test :as test]
             [clojure.pprint :refer [pprint]]
             [foundation.utils :as utils]
-            [foundation.db :as db]
             [foundation.graphql.data-layer :as data]
             [clojure.java.jdbc :as j]
             [clojure.string :as str]
+            [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.resolve :as resolve]
-            [com.walmartlabs.lacinia.execute :as execute]
             [com.walmartlabs.lacinia.util :refer [attach-resolvers]]
             [com.walmartlabs.lacinia.schema :as schema]))
 
@@ -126,13 +125,7 @@
         :args (s/cat :data-layer data/data-layer
                      :schemas (s/coll-of ::schema)))
 
-(defn run-query
-  [query schema-comp]
-  (execute schema-comp query nil nil))
-
 (defn create-graphql
-  ([schemas]
-   (create-graphql (data/new-mysql-data-layer db/db-spec) schemas))
   ([data-layer schemas]
    (let [q-fields  (into {} (map (partial get-x-fields :q) schemas)) ;; first figure out the q fiels for each schema
          m-fields  (into {} (map (partial get-x-fields :m) schemas))

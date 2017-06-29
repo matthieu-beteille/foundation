@@ -10,9 +10,6 @@
             [clojure.set :as set]))
 
 ;; BACKEND SYSTEM RELOAD
-(def dirs (get-env :directories))
-(apply set-refresh-dirs dirs)
-
 (def system nil)
 
 (defn init []

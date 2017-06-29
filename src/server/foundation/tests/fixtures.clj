@@ -1,5 +1,5 @@
 (ns foundation.tests.fixtures
-  (:require [foundation.db :as db]
+  (:require [foundation.graphql-layer :as graphql-layer]
             [clojure.java.jdbc :as j]))
 
 (def address
@@ -149,7 +149,7 @@
       (j/insert! db :friendship {:user 1
                                  :linked_user (:generated_key (first inserted))}))))
 
-(def db db/db-spec)
+(def db graphql-layer/db-spec)
 
 (defn drop-tables!
   [db]
@@ -159,4 +159,4 @@
                         "DROP TABLE IF EXISTS `book`"
                         "DROP TABLE IF EXISTS `address`"
                         "DROP TABLE IF EXISTS `dog`"
-                        "DROP TABLE IF EXISTS `user`"])) 
+                        "DROP TABLE IF EXISTS `user`"]))

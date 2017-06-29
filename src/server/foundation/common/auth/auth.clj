@@ -1,24 +1,22 @@
-(ns foundation.common.auth
-  (:require [buddy.auth.backends :as backends]
-            [buddy.sign.jws :as jws]
-            [foundation.graphql.lib :as lib]))
-
-(def secret "TO_PUT_IN_ENV_VAR")
-(def backend (backends/jws {:secret secret}))
+(ns foundation.common.auth.auth
+  (:require [environ.core :refer [env]]
+            [foundation.graphql.lib :as lib]
+            [foundation.utils :as utils]))
 
 (defn lookup-user
   [username password schema]
-  (lib/run-query "{ user(username: \"juanito\") { username, description } }" schema))
+  (let [user {:username "SDFS" :password "sdfasf"}]
+    user))
 
 (defn do-login
   "Login endpoint method, returns jws if username and password correct"
   [request]
-  (let [schema (:graphql-layer request)
+  (let [schema (:schema request)
         params (:params request)]
   (if-let [user (lookup-user (:username params) (:password params) schema)]
     {:status 201
      :headers {"Content-type" "application/json"}
-     :body {:token (jws/sign user secret)
+     :body {:token (utils/generate-token user (env :jws-secret))
             :user user}}
     {:status 401
      :headers {"Content-type" "application/json"}

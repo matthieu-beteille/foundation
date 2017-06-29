@@ -147,7 +147,7 @@
   (query-many-nested-entities
     [db-spec entity-name field field-spec context params value]
     (let [linked-entity-name (utils/get-entity-name (:type field-spec))
-          fk                 (get-fk entity-name field-spec) 
+          fk                 (get-fk entity-name field-spec)
           query              (str "SELECT * FROM " linked-entity-name
                                   " WHERE " fk " = " (:id value)
                                   (add-parameters "AND" params))]
