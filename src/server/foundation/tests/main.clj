@@ -3,14 +3,15 @@
              [clojure.pprint :refer [pprint]]
              [foundation.graphql.lib :as lib]
              [foundation.graphql.data-layer :as data]
-             [foundation.db :as db]
+             [foundation.graphql-layer :as graphql-layer]
              [foundation.tests.fixtures :as f]
              [clojure.java.jdbc :as j]
              [com.walmartlabs.lacinia :refer [execute]]))
 
-(def data-layer (data/new-mysql-data-layer db/db-spec))
+(def data-layer (data/new-mysql-data-layer graphql-layer/db-spec))
 (def testql nil)
 (def query-fn nil)
+
 
 (defn fixtures [f]
   (alter-var-root #'testql (constantly
@@ -21,9 +22,9 @@
                                                  f/author
                                                  f/book])))
   (alter-var-root #'query-fn (constantly  #(execute testql % nil nil)))
-  (f/insert-data! db/db-spec)
+  (f/insert-data! graphql-layer/db-spec)
   (f)
-  (f/drop-tables! db/db-spec))
+  (f/drop-tables! graphql-layer/db-spec))
 
 (use-fixtures :once fixtures)
 

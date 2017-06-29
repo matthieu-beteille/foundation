@@ -1,6 +1,6 @@
 (ns user
   (:require [figwheel-sidecar.repl-api :as ra]
-            [clojure.tools.namespace.repl :refer (refresh)]
+            [clojure.tools.namespace.repl :refer [set-refresh-dirs refresh]]
             [com.stuartsierra.component :as component]
             [foundation.system :refer [new-system]]
             [clojure.java.io :as io]
@@ -10,7 +10,6 @@
             [clojure.set :as set]))
 
 ;; BACKEND SYSTEM RELOAD
-
 (def system nil)
 
 (defn init []

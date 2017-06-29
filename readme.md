@@ -45,6 +45,18 @@ boot dev-web
 
 ```brew install boot-clj```
 
+#### Database
+
+```
+docker exec -it {process_name} bash
+mysql --user=root --password foundation
+
+
+show tables;
+SELECT * FROM user;
+
+```
+
 #### Install npm modules
 
 ``` shell
