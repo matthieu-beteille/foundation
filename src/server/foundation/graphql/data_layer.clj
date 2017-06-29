@@ -1,32 +1,33 @@
 (ns foundation.graphql.data-layer
   (:require [clojure.java.jdbc :as j]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [clojure.pprint :refer [pprint]]
-            [foundation.utils :as utils]))
+            [foundation.graphql.utils :as utils]))
 
 (comment "for now we only have mysql but in the future we can easily swap the data layer, we'll just have to reimplement the following interface")
 
 (defprotocol DataLayer
   "A simple protocol describing foundation's data layer"
-  (init! [this schemas]
+  (init! [this fschemas]
     "effectul method to initialise things")
-  (init-entity! [this entity-name schema]
+  (init-entity! [this fschema]
     "effectful method to initialise things related to an entity (ex: create tables with sql)")
-  (query [this entity-name context params value]
+  (query [this fschema context params value]
     "query method to retrieve an entity.")
   (query-one-nested-entity
-    [this entity-name field field-spec ctx params value]
+    [this fschema field field-spec ctx params value]
     "returns a one-to-one linked entity. (:belongs-to side)")
   (query-one-parent-entity
-    [this entity-name field field-spec ctx params value]
+    [this fschema field field-spec ctx params value]
     "returns a one-to-one parent entity. (:has-one side)")
   (query-many-nested-entities
-    [this entity-name field field-spec ctx params value]
+    [this fschema field field-spec ctx params value]
     "returns multiple has-many nested entities")
   (query-many-to-many-entities
-    [this entity-name field field-spec ctx params value]
+    [this fschema field field-spec ctx params value]
     "returns multiple many-to-any nested entities")
-  (create [this entity-name context params value]
+  (create-entity
+    [this fschema context params value]
     "create entity"))
 
 (defn- to-sql-type
@@ -41,11 +42,17 @@
 (def relations-with-fk #{:belongs-to})
 (def needs-join-table #{:has-and-belongs-to-many})
 
+(defn get-linked-entity
+  [field-name field-spec]
+  (if-let [through (:as field-spec)]
+    (name through)
+    (name field-name)))
+
 (defn get-fk
   [entity-name field-spec]
   (if-let [through (:as field-spec)]
     (name through)
-    entity-name))
+    (name entity-name)))
 
 (defn generate-sql-fields
   [[field spec]]
@@ -73,12 +80,13 @@
 
 (defn get-self-assoc-key
   [entity-name]
-  (str "linked_" entity-name ))
+  (str "linked_" (name entity-name)))
 
 (defn create-join-table
-  [entity-name [field {:keys [relation-name relation type]}]]
+  [{:keys [relation  relation-name type from to] :as param}]
   (let [table-name (name relation-name)
-        linked-entity-name (utils/get-entity-name type)
+        entity-name (name from)
+        linked-entity-name (name to)
         is-self-association? (= entity-name linked-entity-name)
         fk-name (if is-self-association?
                   (get-self-assoc-key entity-name)
@@ -101,19 +109,18 @@
 (defrecord MySQL [dbtype dbname host user password]
   DataLayer
   (init!
-    [db-spec schemas]
-    (let [join-tables (mapcat #(->> (get-in % [:schema :fields])
-                                    (filter (comp needs-join-table
-                                                  :relation
-                                                  second))
-                                    (map (partial create-join-table (name (:name %)))))
-                              schemas)]
+    [db-spec fschemas]
+    (let [join-tables (->> fschemas
+                           (mapcat :relations)
+                           (filter (comp (partial = :has-and-belongs-to-many)
+                                         :relation))
+                           (map create-join-table))]
       (j/db-do-commands db-spec join-tables)))
 
   (init-entity!
-    [db-spec entity-name schema]
-    (let [main-table  (str "CREATE TABLE IF NOT EXISTS `" entity-name "` ( "
-                           (->> schema
+    [db-spec {:keys [entity-name fields]}]
+    (let [main-table  (str "CREATE TABLE IF NOT EXISTS `" (name entity-name) "` ( "
+                           (->> fields
                                 (map generate-sql-fields)
                                 (remove nil?)
                                 (interpose ", ")
@@ -122,13 +129,13 @@
       (j/execute! db-spec main-table)))
 
   (query
-    [db-spec entity-name context params value]
-    (let [query (str "SELECT * FROM " entity-name
+    [db-spec {:keys [entity-name]} context params value]
+    (let [query (str "SELECT * FROM " (name entity-name)
                      (add-parameters "WHERE" params))]
       (j/query db-spec [query])))
 
   (query-one-parent-entity
-    [db-spec entity-name field field-spec context params value]
+    [db-spec fschema field field-spec context params value]
     (let [linked-entity-name (utils/get-entity-name (:type field-spec))
           query              (str "SELECT * FROM " linked-entity-name
                                   " WHERE id = " (get value field)
@@ -136,7 +143,7 @@
       (first (j/query db-spec [query]))))
 
   (query-one-nested-entity
-    [db-spec entity-name field field-spec context params value]
+    [db-spec {:keys [entity-name]} field field-spec context params value]
     (let [linked-entity-name (utils/get-entity-name (:type field-spec))
           fk                 (get-fk entity-name field-spec)
           query              (str "SELECT * FROM " linked-entity-name
@@ -145,32 +152,45 @@
       (first (j/query db-spec [query]))))
 
   (query-many-nested-entities
-    [db-spec entity-name field field-spec context params value]
+    [db-spec {:keys [entity-name]} field field-spec context params value]
     (let [linked-entity-name (utils/get-entity-name (:type field-spec))
-          fk                 (get-fk entity-name field-spec) 
+          fk                 (get-fk entity-name field-spec)
           query              (str "SELECT * FROM " linked-entity-name
                                   " WHERE " fk " = " (:id value)
                                   (add-parameters "AND" params))]
       (j/query db-spec [query])))
 
   (query-many-to-many-entities
-    [db-spec entity-name field field-spec context params value]
+    [db-spec {:keys [entity-name]} field field-spec context params value]
     (let [join-table           (name (:relation-name field-spec))
           linked-entity-name   (utils/get-entity-name (:type field-spec))
-          is-self-association? (= entity-name linked-entity-name)
+          is-self-association? (= (name entity-name) linked-entity-name)
           fk-name              (if is-self-association?
                                  (get-self-assoc-key entity-name)
                                  linked-entity-name)
           query (str "SELECT a.* FROM "  linked-entity-name " a"
                      " JOIN " join-table " b ON a.id = b." fk-name
-                     " WHERE b." entity-name " = " (:id value)
+                     " WHERE b." (name entity-name) " = " (:id value)
                      (add-parameters "AND" params))]
       (j/query db-spec [query])))
 
-  (create
-    [db-spec entity-name context params value]
-    (let [inserted (j/insert! db-spec (keyword entity-name) params)]
-      params)))
+  (create-entity
+    [db-spec {:keys [entity-name fields]} context params value]
+    (let [own-params (into {} (remove (comp map? second) params))
+          nested-params (into {} (filter (comp map? second) params))
+          inserted-id (->> own-params
+                           (j/insert! db-spec entity-name)
+                           (first)
+                           :generated_key)]
+      (doseq [[key val] nested-params]
+        (let [field-spec (key fields)
+              type (:type field-spec)
+              table-name  (utils/get-entity-name type)
+              fk (get-fk entity-name field-spec)]
+          (j/insert! db-spec
+                     table-name
+                     (assoc val fk inserted-id))))
+      (assoc params :id inserted-id))))
 
 (defn new-mysql-data-layer
   [db-spec]

@@ -1,4 +1,4 @@
-(ns foundation.tests.main
+(ns foundation.tests.queries
   (:require  [clojure.test :refer [deftest is testing use-fixtures]]
              [clojure.pprint :refer [pprint]]
              [foundation.graphql.lib :as lib]
@@ -36,7 +36,7 @@
                                  f/friends))}))))
 
   (testing "should be able to query by a combination of all q fields"
-    (let [query "query { user(username: \"juanito\") { username, description } }"]
+    (let [query "{ user(username: \"juanito\") { username, description } }"]
       (is (= (:data (query-fn query))
              {:user (list (select-keys f/juan [:username :description]))})))
     (let [query "{ user(id: 1) { username, description } }"]
@@ -140,9 +140,9 @@
     (let [query "{ author(id:1) { name, books { title } } }"]
       (is (= (:data (query-fn query))
              {:author (list {:name "author-0"
-                             :books (list {:title "book-0"}
-                                          {:title "book-1"}
-                                          {:title "book-2"})})})))
+                           :books (list {:title "book-0"}
+                                        {:title "book-1"}
+                                        {:title "book-2"})})})))
     (let [query "{ book(id:1) { title, authors { name } } }"]
       (is (= (:data (query-fn query))
              {:book (list {:title "book-0"
