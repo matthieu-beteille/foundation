@@ -8,8 +8,9 @@
                  [react-native-externs "0.0.2-SNAPSHOT" :scope "test"]
                  [org.clojure/tools.namespace "0.2.7"]
                  ;; clojure/clojurescript
-                 [org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojure "1.9.0-alpha17"]
                  [org.clojure/clojurescript "1.9.293"]
+                 [clojure-future-spec "1.9.0-alpha17"]
                  ;; server side deps
                  [adzerk/boot-test "1.2.0" :scope "test"]
                  [com.stuartsierra/component "0.3.2"]
@@ -17,7 +18,7 @@
                  [yesql "0.5.3"]
                  [mysql/mysql-connector-java "5.1.32"]
                  [org.clojure/data.json "0.2.6"]
-                 [com.walmartlabs/lacinia "0.17.0"]
+                 [com.walmartlabs/lacinia "0.18.0" :exclude [clojure-future-spec]]
                  [compojure "1.5.0"]
                  [ring/ring-json "0.4.0"]
                  [ring/ring-defaults "0.2.0"]

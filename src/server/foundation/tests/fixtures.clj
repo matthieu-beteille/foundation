@@ -9,10 +9,12 @@
              :user {:type :user
                     :relation :belongs-to}
              :postcode {:type String
+                        :m true
                         :q true}
-             :line1 {:type String}
+             :line1 {:type String
+                     :m true}
              :line2 {:type String}
-             :city {:type String}}})
+             :city {:type String}}}) 
 
 (def author
   {:name :author
@@ -27,7 +29,10 @@
   {:name :book
    :fields '{:id {:type ID
                   :q true}
-             :title {:type String}
+             :mostLikedBy {:type :user
+                             :relation :belongs-to}
+             :title {:type String
+                     :m true}
              :authors {:type (list :author)
                        :relation :has-and-belongs-to-many
                        :relation-name :author_book}}})
@@ -37,7 +42,8 @@
    :fields '{:id {:type ID
                   :q true}
              :name {:type String
-                    :q true}
+                    :q true
+                    :m true}
              :breed {:type String
                      :q true}
              :owner {:type :user
@@ -56,10 +62,15 @@
     :description {:type 'String
                   :m true}
     :address {:type :address
+              :m true
               :relation :has-one}
     :friends {:type '(list :user)
               :relation :has-and-belongs-to-many
               :relation-name :friendship}
+    :favoriteBook {:type :book
+                    :m true
+                    :relation :has-one
+                    :as :mostLikedBy}
     :dogs {:type '(list :dog)
            :relation :has-many
            :as :owner}}})

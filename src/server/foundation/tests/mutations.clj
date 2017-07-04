@@ -17,6 +17,8 @@
                             (lib/create-graphql data-layer
                                                 [f/user
                                                  f/address
+                                                 f/book
+                                                 f/author
                                                  f/dog])))
   (alter-var-root #'query-fn (constantly  #(execute testql % nil nil)))
   (f)
@@ -28,9 +30,8 @@
 
   (testing "should be able to create an entity"
 
-    (let [query "mutation { createUser(username: \"jojo\", description: \"cool jojo 123\", address: { postcode: \"sw111pj\" } ) { username, description } }"
+    (let [query "mutation { createUser(username: \"jojo\", description: \"cool jojo 123\") { username, description } }"
           result (query-fn query)]
-      (pprint result)
       (is (= (:createUser (:data result))
              {:username "jojo"
               :description "cool jojo 123"}))))
@@ -49,4 +50,49 @@
           result (query-fn query)]
       (is (nil? (:createUser (:data result))))
       (is (= "invalid mutation parameters"
-             (:message (first (:errors result))))))))
+             (:message (first (:errors result)))))))
+
+  (testing "should be able to create nested entity as well"
+    (let [query "mutation { createUser(username: \"user-100\", description: \"sweet description\", address: { postcode: \"sw111pj\", line1: \"19a ilminster gardens\" }) { username, address { postcode } } }"
+          result (query-fn query)]
+      (is (= (:createUser (:data result))
+             {:username "user-100"
+              :address {:postcode "sw111pj"}}))))
+
+  (testing "should be able to create nested entities as well"
+
+    (let [query "mutation { createUser(username: \"user-101\", description: \"sweet description\", address: { postcode: \"sw111pj\", line1: \"19a ilminster gardens\" }, favoriteBook: {title: \"book-favorited\"}) { username, favoriteBook { title }, address { postcode } } }"
+          result (query-fn query)]
+      (is (= (:createUser (:data result))
+             {:username "user-101"
+              :favoriteBook {:title "book-favorited"}
+              :address {:postcode "sw111pj"}})))))
+
+(deftest update
+
+  (testing "should be able to update an entity"
+
+    (let [query "mutation { updateUser(id: \"1\", description: \"updated\") { description } }"
+          result (query-fn query)]
+      (is (= (:updateUser (:data result))
+             {:description "updated"}))))
+
+  (testing "should get an error when entity doesn't exist"
+
+    (let [query "mutation { updateUser(id: \"1312321321\", description: \"updated\") { description } }"
+          result (query-fn query)]
+      (is (= (:message (first (:errors result)))
+             "the entity you are trying to update doesn't exist"))))
+
+  (testing "should update nested entity as well"
+    (is false))
+
+  (testing "should create and link to nested entity if doesn't exist"
+    (is false))
+
+  (testing "should create and link to nested entities if don't exist"
+    (is false))
+
+  (testing "should update nested entities as well"
+    (is false)))
+
