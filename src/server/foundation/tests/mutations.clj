@@ -68,4 +68,31 @@
               :favoriteBook {:title "book-favorited"}
               :address {:postcode "sw111pj"}})))))
 
+(deftest update
+
+  (testing "should be able to update an entity"
+
+    (let [query "mutation { updateUser(id: \"1\", description: \"updated\") { description } }"
+          result (query-fn query)]
+      (is (= (:updateUser (:data result))
+             {:description "updated"}))))
+
+  (testing "should get an error when entity doesn't exist"
+
+    (let [query "mutation { updateUser(id: \"1312321321\", description: \"updated\") { description } }"
+          result (query-fn query)]
+      (is (= (:message (first (:errors result)))
+             "the entity you are trying to update doesn't exist"))))
+
+  (testing "should update nested entity as well"
+    (is false))
+
+  (testing "should create and link to nested entity if doesn't exist"
+    (is false))
+
+  (testing "should create and link to nested entities if don't exist"
+    (is false))
+
+  (testing "should update nested entities as well"
+    (is false)))
 

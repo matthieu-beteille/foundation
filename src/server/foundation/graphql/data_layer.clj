@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as j]
             [clojure.spec.alpha :as s]
             [clojure.pprint :refer [pprint]]
+            [com.walmartlabs.lacinia.resolve :as resolve]
             [foundation.graphql.utils :as utils]))
 
 (comment "for now we only have mysql but in the future we can easily swap the data layer, we'll just have to reimplement the following interface")
@@ -27,6 +28,9 @@
     [this fschema field field-spec ctx params value]
     "returns multiple many-to-any nested entities")
   (create-entity
+    [this fschema context params value]
+    "create entity")
+  (update-entity
     [this fschema context params value]
     "create entity"))
 
@@ -190,7 +194,17 @@
           (j/insert! db-spec
                      table-name
                      (assoc val fk inserted-id))))
-      (assoc params :id inserted-id))))
+      (assoc params :id inserted-id)))
+
+  (update-entity
+    [db-spec {:keys [entity-name fields]} context params value]
+    (if-let [query (first (j/query db-spec [(str "SELECT * FROM " (name entity-name)
+                                                 " WHERE id = ?")
+                                            (:id params)]))]
+      (do
+        (j/update! db-spec entity-name (dissoc params :id) ["id = ?" (:id params)])
+        (merge query params))
+      (resolve/resolve-as nil {:message "the entity you are trying to update doesn't exist"}))))
 
 (defn new-mysql-data-layer
   [db-spec]
