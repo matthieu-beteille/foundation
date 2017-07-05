@@ -122,3 +122,18 @@
           result (query-fn query)]
       (is (= (:message (first (:errors result)))
              "invalid mutation parameters")))))
+
+(deftest delete
+  (testing "should be able to delete an entity"
+    (let [query "mutation { deleteUser(id: \"1\") { username } }"
+          check-query "{ user(id: \"1\") { username } }"
+          result (query-fn query)
+          check-result (query-fn check-query)
+          check-nested-query "{ address { postcode, user { id } } }"
+          check-nested-result  (query-fn check-nested-query)]
+      (is (zero? (->> (:address (:data check-nested-result))
+                      (filter (comp (partial = "1") :id :user))
+                      (count))))
+      (is (nil? (first (:user (:data check-result)))))
+      (is (= (:deleteUser (:data result))
+             {:username "jojo"})))))

@@ -67,17 +67,24 @@
        (map (juxt first (comp utils/get-type :type second)))
        (into {})))
 
+(defn add-id-field
+  [schema]
+  (update-in schema [:fields] assoc :id {:type 'ID
+                                         :q true}))
+
 (defn parse-schema
   [schema]
-  {:entity-name  (:name schema)
-   :validations  (get-validations schema)
-   :q-fields     (get-x-fields :q schema)
-   :m-fields     (get-x-fields :m schema)
-   :relations    (get-relations schema)
-   :input-object {:fields (utils/remove-data (create-input-object schema))}
-   :own-fields   (get-own-fields schema)
-   :fields       (:fields schema)
-   :types        (get-types schema)})
+  (let [schema (->> schema
+                    (add-id-field))]
+    {:entity-name  (:name schema)
+     :validations  (get-validations schema)
+     :q-fields     (get-x-fields :q schema)
+     :m-fields     (get-x-fields :m schema)
+     :relations    (get-relations schema)
+     :input-object {:fields (utils/remove-data (create-input-object schema))}
+     :own-fields   (get-own-fields schema)
+     :fields       (:fields schema)
+     :types        (get-types schema)}))
 
 (defn parse-schemas
   [schemas]

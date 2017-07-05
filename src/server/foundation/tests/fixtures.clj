@@ -5,9 +5,7 @@
 (def address
   {:name :address
    :validation #(not= (:postcode %) "forbidden-postcode")
-   :fields  {:id {:type 'ID
-                  :q true}
-             :user {:type :user
+   :fields  {:user {:type :user
                     :relation :belongs-to}
              :postcode {:type 'String
                         :m true
@@ -20,19 +18,15 @@
 
 (def author
   {:name :author
-   :fields '{:id {:type ID
-                  :q true}
-             :name {:type String}
+   :fields '{:name {:type String}
              :books {:type (list :book)
                      :relation :has-and-belongs-to-many
                      :relation-name :author_book}}})
 
 (def book
   {:name :book
-   :fields '{:id {:type ID
-                  :q true}
-             :mostLikedBy {:type :user
-                             :relation :belongs-to}
+   :fields '{:mostLikedBy {:type :user
+                           :relation :belongs-to}
              :title {:type String
                      :m true}
              :authors {:type (list :author)
@@ -41,9 +35,7 @@
 
 (def dog
   {:name :dog
-   :fields '{:id {:type ID
-                  :q true}
-             :name {:type String
+   :fields '{:name {:type String
                     :q true
                     :m true}
              :breed {:type String
@@ -55,9 +47,7 @@
   {:name :user
    :validation #(not= (:username %) "forbidden-name") ;; example of entity validation, useful when fields depend on each other
    :fields
-   {:id {:type 'ID
-         :q true}
-    :username {:type 'String
+   {:username {:type 'String
                :m true
                :validation #(> (count %) 3)  ;; example of field validation
                :q true}
