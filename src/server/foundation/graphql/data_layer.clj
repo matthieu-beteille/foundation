@@ -44,6 +44,7 @@
     (= 'String type) "varchar(100)"))
 
 (def relations-with-fk #{:belongs-to})
+(def relations-with-unique-fk #{:belongs-to})
 (def needs-join-table #{:has-and-belongs-to-many})
 
 (defn get-linked-entity
@@ -63,6 +64,7 @@
   (let [field-name     (name field)
         is-relation?   (contains? spec :relation)
         should-add-fk? (relations-with-fk (:relation spec))
+        is-unique-fk?  (relations-with-unique-fk (:relation spec)) ;; check that
         field-type     (:type spec)]
     (when (or should-add-fk? (not is-relation?))
       (str "`"  field-name "` " (to-sql-type field spec should-add-fk?)
@@ -110,12 +112,44 @@
 
 (def data-layer (s/keys :req-un [::dbtype ::dbname ::host ::user ::password]))
 
+(defn get-by-id
+  [db-spec entity id]
+  (first (j/query db-spec [(str "SELECT * FROM " (name entity)
+                                " WHERE id = ?") id])))
+
+(defn get-by
+  [db-spec entity field value]
+  (first (j/query db-spec [(str "SELECT * FROM " (name entity)
+                                " WHERE " (name field) " = ?") value])))
+
+; should probably use INSERT ... ON DUPLICATE KEYS UPDATE ... (to reduce the number of round trips to the db), but good enough for now.
+(defn update-or-create-nested!
+  [db-spec {:keys [entity-name relations]} own-params nested-params]
+  (->> nested-params
+       (map (fn [[key val]]
+              (let [relation   (key relations)
+                    fk         (get-fk entity-name relation)
+                    query      (get-by db-spec (name (:to relation)) fk (:id own-params))
+                    updated    (if query
+                                 (do (j/update! db-spec
+                                                (name (:to relation))
+                                                val [(str fk " = ? ") (:id own-params)])
+                                     (merge query val))
+                                 (assoc val :id (:generated_id (j/insert! db-spec
+                                                                          (name (:to relation))
+                                                                          (assoc val
+                                                                                 (keyword fk)
+                                                                                 (:id own-params))))))]
+                [key updated])))
+       (into {})))
+
 (defrecord MySQL [dbtype dbname host user password]
   DataLayer
   (init!
     [db-spec fschemas]
     (let [join-tables (->> fschemas
                            (mapcat :relations)
+                           (map second)
                            (filter (comp (partial = :has-and-belongs-to-many)
                                          :relation))
                            (map create-join-table))]
@@ -179,31 +213,29 @@
       (j/query db-spec [query])))
 
   (create-entity
-    [db-spec {:keys [entity-name fields]} context params value]
-    (let [own-params (into {} (remove (comp map? second) params))
-          nested-params (into {} (filter (comp map? second) params))
-          inserted-id (->> own-params
+    [db-spec {:keys [entity-name fields relations]} context params value]
+    (let [{:keys [own nested]} (utils/split-params params)
+          inserted-id (->> own
                            (j/insert! db-spec entity-name)
                            (first)
                            :generated_key)]
-      (doseq [[key val] nested-params]
-        (let [field-spec (key fields)
-              type (:type field-spec)
-              table-name  (utils/get-entity-name type)
-              fk (get-fk entity-name field-spec)]
+      (doseq [[key val] nested]
+        (let [relation   (key relations)
+              fk         (get-fk entity-name relation)]
           (j/insert! db-spec
-                     table-name
+                     (:to relation)
                      (assoc val fk inserted-id))))
       (assoc params :id inserted-id)))
 
   (update-entity
-    [db-spec {:keys [entity-name fields]} context params value]
-    (if-let [query (first (j/query db-spec [(str "SELECT * FROM " (name entity-name)
-                                                 " WHERE id = ?")
-                                            (:id params)]))]
-      (do
-        (j/update! db-spec entity-name (dissoc params :id) ["id = ?" (:id params)])
-        (merge query params))
+    [db-spec {:keys [entity-name fields relations] :as fschema} context params value]
+    (if-let [query (get-by-id db-spec entity-name (:id params))]
+      (let [{:keys [own nested]} (utils/split-params params)
+            updated-nested       (update-or-create-nested! db-spec fschema own nested)
+            fields-to-update (dissoc own :id)]
+        (when-not (zero? (count fields-to-update))
+          (j/update! db-spec entity-name fields-to-update ["id = ?" (:id params)]))
+        (merge query params updated-nested))
       (resolve/resolve-as nil {:message "the entity you are trying to update doesn't exist"}))))
 
 (defn new-mysql-data-layer

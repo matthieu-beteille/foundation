@@ -35,9 +35,9 @@
 
 
 (defn gen-lacinia-sch
-  [data-layer all-q-fields fschema]
+  [data-layer all-q-fields all-fschemas fschema]
   (let [queries   (q/gen-queries data-layer all-q-fields fschema)
-        mutations (m/gen-mutations data-layer fschema)]
+        mutations (m/gen-mutations data-layer all-fschemas fschema)]
     (data/init-entity! data-layer fschema)
     {:name      (:entity-name fschema)
      :fields    (:fields queries)
@@ -55,10 +55,13 @@
    (create-graphql (data/new-mysql-data-layer db/db-spec) schemas))
   ([data-layer schemas]
    (let [fschemas  (parser/parse-schemas schemas)
+         all-fschemas (->> fschemas
+                           (map (juxt :entity-name identity))
+                           (into {}))
          all-q-fields (->> fschemas
                            (map (juxt :entity-name :q-fields))
                            (into {}))
-         processed (map (partial gen-lacinia-sch data-layer all-q-fields) fschemas) ;; then generate the schemas
+         processed (map (partial gen-lacinia-sch data-layer all-q-fields all-fschemas) fschemas) ;; then generate the schemas
          objects   (into {} (map #(-> [(:name %) {:fields (:fields %)}]) processed))
          queries   (->> processed
                         (map :queries)

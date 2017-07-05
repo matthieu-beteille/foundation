@@ -4,17 +4,19 @@
 
 (def address
   {:name :address
-   :fields '{:id {:type ID
+   :validation #(not= (:postcode %) "forbidden-postcode")
+   :fields  {:id {:type 'ID
                   :q true}
              :user {:type :user
                     :relation :belongs-to}
-             :postcode {:type String
+             :postcode {:type 'String
                         :m true
+                        :validation (partial not= "forbidden-postcode-field")
                         :q true}
-             :line1 {:type String
+             :line1 {:type 'String
                      :m true}
-             :line2 {:type String}
-             :city {:type String}}}) 
+             :line2 {:type 'String}
+             :city {:type 'String}}})
 
 (def author
   {:name :author

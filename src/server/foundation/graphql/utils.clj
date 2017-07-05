@@ -1,5 +1,12 @@
 (ns foundation.graphql.utils)
 
+(defn get-type
+  [type]
+  (cond
+    (keyword? type) type
+    (list? type)    (second type)
+    :default        type))
+
 (defn get-entity-name
   "return entity name, (list :users) or (non-null :users) or :users will all return users"
   [type]
@@ -32,3 +39,12 @@
   (into {} (map  #(-> [(first %)
                        (dissoc (second %) :q :m :validation :relation-name :relation :as)])
                  schema)))
+
+(defn split-params
+  [params]
+  (->> params
+       (group-by (comp map? second))
+       ((juxt (comp (partial into {}) second first)
+              (comp (partial into {}) second second)))
+       (zipmap [:own :nested])))
+

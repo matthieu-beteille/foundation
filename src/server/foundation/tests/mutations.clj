@@ -84,15 +84,41 @@
       (is (= (:message (first (:errors result)))
              "the entity you are trying to update doesn't exist"))))
 
-  (testing "should update nested entity as well"
-    (is false))
+  (testing "should create nested entity if doesn't exist"
+    (let [query "mutation { updateUser(id: \"1\", description: \"updated-2\", address: { postcode: \"TEST\", line1: \"cool\" }) { description, address { postcode } } }"
+          result (query-fn query)
+          check-query " { user(id:\"1\") { description, address { postcode } } }"
+          check-result (query-fn check-query)]
+      (is (= (:updateUser (:data result))
+             (first (:user (:data check-result)))
+             {:description "updated-2"
+              :address {:postcode "TEST"}}))))
 
-  (testing "should create and link to nested entity if doesn't exist"
-    (is false))
+  (testing "should update nested entity if exists"
+    (let [query "mutation { updateUser(id: \"1\", description: \"updated-3\", address: { postcode: \"TEST2\" }) { description, address { postcode, line1 } } }"
+          result (query-fn query)
+          check-query " { user(id:\"1\") { description, address { postcode, line1 } } }"
+          check-result (query-fn check-query)]
+      (is (= (:updateUser (:data result))
+             (first (:user (:data check-result)))
+             {:description "updated-3"
+              :address {:postcode "TEST2"
+                        :line1 "cool"}}))))
 
-  (testing "should create and link to nested entities if don't exist"
-    (is false))
+  (testing "should get an error when mutation params not valid"
+    (let [query "mutation { updateUser(id: \"1\", username: \"forbidden-name\") { description } }"
+          result (query-fn query)]
+      (is (= (:message (first (:errors result)))
+             "invalid mutation parameters"))))
 
-  (testing "should update nested entities as well"
-    (is false)))
+  (testing "should get an error when nested mutation params not valid (global validation)"
+    (let [query "mutation { updateUser(id: \"1\", address: { postcode: \"forbidden-postcode\" }) { description } }"
+          result (query-fn query)]
+      (is (= (:message (first (:errors result)))
+             "invalid mutation parameters"))))
 
+  (testing "should get an error when nested mutation params not valid (field-validation)"
+    (let [query "mutation { updateUser(id: \"1\", address: { postcode: \"forbidden-postcode-field\" }) { description } }"
+          result (query-fn query)]
+      (is (= (:message (first (:errors result)))
+             "invalid mutation parameters")))))

@@ -12,12 +12,12 @@
 
 (defn format-relation
   [name [field field-spec]]
-  {:relation (:relation field-spec)
-   :field    field
-   :from     name
-   :to       (keyword (utils/get-entity-name (:type field-spec)))
-   :as       (:as field-spec)
-   :relation-name (:relation-name field-spec)})
+  [field {:relation (:relation field-spec)
+          :field    field
+          :from     name
+          :to       (keyword (utils/get-entity-name (:type field-spec)))
+          :as       (:as field-spec)
+          :relation-name (:relation-name field-spec)}])
 
 (defn get-relations
   [{:keys [fields
@@ -25,7 +25,7 @@
   (->> fields
        (filter (comp relations :relation second))
        (map (partial format-relation name))
-       (into [])))
+       (into {})))
 
 (defn get-own-fields
   [{:keys [fields]}]
@@ -50,18 +50,34 @@
                      spec)]))
        (into {})))
 
+(defn get-validations
+  [{:keys [validation fields]}]
+  (merge (if (nil? validation)
+           {}
+           {:global-validation validation})
+         (->> fields
+              (map (juxt first
+                         (comp :validation second)))
+              (remove (comp nil? second))
+              (into {}))))
+
+(defn get-types
+  [{:keys [fields]}]
+  (->> fields
+       (map (juxt first (comp utils/get-type :type second)))
+       (into {})))
+
 (defn parse-schema
   [schema]
   {:entity-name  (:name schema)
-   :validation   (:validation schema)
+   :validations  (get-validations schema)
    :q-fields     (get-x-fields :q schema)
    :m-fields     (get-x-fields :m schema)
    :relations    (get-relations schema)
    :input-object {:fields (utils/remove-data (create-input-object schema))}
    :own-fields   (get-own-fields schema)
-   :fields       (:fields schema)})
-
-(comment "first figure out q-fields, ")
+   :fields       (:fields schema)
+   :types        (get-types schema)})
 
 (defn parse-schemas
   [schemas]
