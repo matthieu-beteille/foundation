@@ -37,6 +37,7 @@
       (resolve/resolve-as nil {:message "invalid mutation parameters"}))))
 
 (defn gen-create-and-update
+  "generate updateEntity and createEntity"
   [data-layer all-fschemas {:keys [entity-name m-fields entity-name fields] :as fschema}]
   (let [update-resolver-id (to-camel-case "update" (name entity-name))
         create-resolver-id (to-camel-case "create" (name entity-name))
@@ -59,6 +60,7 @@
                                                      {:type '(non-null ID)})}}}))
 
 (defn gen-delete
+  "generate deleteEntity mutation"
   [data-layer {:keys [entity-name] :as fschema}]
   (let [delete-resolver-id (to-camel-case "delete" (name entity-name))
         handler             (partial data/delete-entity data-layer fschema)]
@@ -68,6 +70,7 @@
      :resolvers {delete-resolver-id handler}}))
 
 (defn gen-has-one-mutations
+  "for now only generate deleteEntityNestedEntity mutation"
   [data-layer {:keys [from to] :as relation} fschema all-fschemas]
   (let [delete-nested-id (to-camel-case "delete" from to)
         handler          (partial data/delete-one-nested-entity data-layer fschema relation)]
@@ -77,6 +80,7 @@
      :resolvers {delete-nested-id handler}}))
 
 (defn gen-relations-mutations
+  "generate relations based mutations"
   [data-layer all-fschemas {:keys [relations] :as fschema}]
   (->> relations
        (map second)

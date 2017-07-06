@@ -122,8 +122,10 @@
   (delete-one-nested-entity
     [db-spec fschema relation context params value]
     (let [entity (mysql/get-by-id db-spec (:from relation) (:id params))]
-      (mysql/delete-entity db-spec (:to relation) {(:fk relation) (:id params)})
-      entity)))
+      (if entity
+        (do (mysql/delete-entity db-spec (:to relation) {(:fk relation) (:id params)})
+            entity)
+        (resolve/resolve-as nil {:message "entity doesn't exist"})))))
 
 (defn new-mysql-data-layer
   [db-spec]
