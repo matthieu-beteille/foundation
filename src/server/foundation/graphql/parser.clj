@@ -17,7 +17,7 @@
           :from     entity-name
           :to       (keyword (utils/get-entity-name (:type field-spec)))
           :as       (:as field-spec)
-          :fk       (keyword (utils/get-fk entity-name field-spec))
+          :fk       (utils/get-fk entity-name field-spec)
           :relation-name (:relation-name field-spec)}])
 
 (defn get-relations

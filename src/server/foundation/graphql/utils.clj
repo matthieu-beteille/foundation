@@ -3,8 +3,8 @@
 (defn get-fk
   [entity-name field-spec]
   (if-let [through (:as field-spec)]
-    (name through)
-    (name entity-name)))
+    through
+    entity-name))
 
 (defn get-type
   [type]

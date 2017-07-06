@@ -70,15 +70,15 @@
 (defn update-or-create!
   [db-spec {:keys [relations entity-name]} own-params nested-params [key val]]
   (let [relation   (key relations)
-        fk         (utils/get-fk entity-name relation)
+        fk         (:fk relation)
         query      (get-entity-by db-spec (name (:to relation)) fk (:id own-params))
         updated    (if query
-                     (do (j/update! db-spec (name (:to relation)) val [(str fk " = ? ") (:id own-params)])
+                     (do (j/update! db-spec (name (:to relation)) val [(str (name fk) " = ? ") (:id own-params)])
                          (merge query val))
                      (assoc val :id (:generated_id (j/insert! db-spec
                                                               (name (:to relation))
                                                               (assoc val
-                                                                     (keyword fk)
+                                                                     fk
                                                                      (:id own-params))))))]
     [key updated]))
 
@@ -127,7 +127,7 @@
                          :generated_key)]
     (doseq [[key val] nested]
       (let [relation   (key relations)
-            fk         (utils/get-fk entity-name relation)]
+            fk         (:fk relation)]
         (j/insert! db-spec
                    (:to relation)
                    (assoc val fk inserted-id))))

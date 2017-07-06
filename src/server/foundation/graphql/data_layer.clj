@@ -83,16 +83,16 @@
       (first (mysql/get-entity db-spec linked-entity (merge {:id id} params)))))
 
   (query-one-nested-entity
-    [db-spec {:keys [entity-name] :as fschema} field field-spec context params value]
+    [db-spec {:keys [entity-name relations] :as fschema} field field-spec context params value]
     (let [linked-entity (field (:types fschema))
-          fk            (utils/get-fk entity-name field-spec)]
+          fk            (:fk (field relations))]
       (first (mysql/get-entity db-spec linked-entity (merge {fk (:id value)}
                                                       params)))))
 
   (query-many-nested-entities
-    [db-spec {:keys [entity-name types]} field field-spec context params value]
+    [db-spec {:keys [entity-name types relations]} field field-spec context params value]
     (let [linked-entity (field types)
-          fk            (utils/get-fk entity-name field-spec)]
+          fk            (:fk (field relations))]
       (mysql/get-entity db-spec linked-entity (merge {fk (:id value)}
                                                params))))
 
