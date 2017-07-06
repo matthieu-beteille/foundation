@@ -1,6 +1,7 @@
 (ns foundation.graphql.mysql
   (:require [foundation.graphql.utils :as utils]
             [com.walmartlabs.lacinia.resolve :as resolve]
+            [clojure.pprint :refer [pprint]]
             [clojure.java.jdbc :as j]))
 
 (def relations-with-fk #{:belongs-to})
@@ -144,10 +145,22 @@
       (merge query params updated-nested))
     (resolve/resolve-as nil {:message "the entity you are trying to update doesn't exist"})))
 
+(defn generate-delete-params
+  [params]
+  (into [] (concat (->> params
+                        (keys)
+                        (map #(str (name %) " = ?"))
+                        (interpose " AND ")
+                        (apply str)
+                        (vector))
+                   (->> params
+                        (vals)
+                        (into [])))))
+
 (defn delete-entity
-  [db-spec {:keys [entity-name] :as fschema} params]
-  (let [entity (get-by-id db-spec entity-name (:id params))]
+  [db-spec entity-name params]
+  (let [entity (first (get-entity db-spec entity-name params))]
     (if entity
-      (do (j/delete! db-spec entity-name ["id = ?" (:id params)])
+      (do (j/delete! db-spec entity-name (generate-delete-params params))
           entity)
       (resolve/resolve-as nil {:message "the entity you are trying to delete doesn't exist"}))))

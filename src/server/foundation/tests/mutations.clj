@@ -137,3 +137,16 @@
       (is (nil? (first (:user (:data check-result)))))
       (is (= (:deleteUser (:data result))
              {:username "jojo"})))))
+
+(deftest delete-nested
+  (testing "should be able to delete a nested entity"
+    (let [query "mutation { deleteUserAddress(id: \"2\") { username, address { postcode } } }"
+          result (query-fn query)
+          check-query " { user(id: \"2\") { username, address { postcode } } } "
+          check-result (query-fn check-query)]
+      (is (= (:deleteUserAddress (:data result))
+             {:username "user-100"
+              :address nil}))
+      (is (= (first (:user (:data check-result)))
+             {:username "user-100"
+              :address nil})))))

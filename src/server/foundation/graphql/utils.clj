@@ -54,12 +54,6 @@
               (comp (partial into {}) second second)))
        (zipmap [:own :nested])))
 
-(defn get-fk
-  [entity-name field-spec]
-  (if-let [through (:as field-spec)]
-    (name through)
-    (name entity-name)))
-
 (defn get-self-assoc-key
   [entity-name]
   (str "linked_" (name entity-name)))

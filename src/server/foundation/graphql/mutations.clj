@@ -6,10 +6,10 @@
             [com.walmartlabs.lacinia.resolve :as resolve]))
 
 (defn to-camel-case
-  [prefix entity-name]
-  (->> entity-name
-       (str/capitalize)
-       (str prefix)
+  [first & rest]
+  (->> rest
+       (map (comp str/capitalize name))
+       (apply (partial str first))
        (keyword)))
 
 (defn validate-params
@@ -67,11 +67,37 @@
                                      :args {:id {:type '(non-null ID)}}}}
      :resolvers {delete-resolver-id handler}}))
 
+(defn gen-has-one-mutations
+  [data-layer {:keys [from to] :as relation} fschema all-fschemas]
+  (let [delete-nested-id (to-camel-case "delete" from to)
+        handler          (partial data/delete-one-nested-entity data-layer fschema relation)]
+    {:mutations {delete-nested-id {:type    (:entity-name fschema)
+                                   :resolve delete-nested-id
+                                   :args    {:id {:type '(non-null ID)}}}}
+     :resolvers {delete-nested-id handler}}))
+
+(defn gen-relations-mutations
+  [data-layer all-fschemas {:keys [relations] :as fschema}]
+  (->> relations
+       (map second)
+       (map #(case (:relation %)
+               :has-one
+               (gen-has-one-mutations data-layer % fschema all-fschemas)
+               {}))
+       ((juxt (comp (partial into {})
+                    (partial mapcat :resolvers))
+              (comp (partial into {})
+                    (partial mapcat :mutations))))
+       (zipmap [:resolvers :mutations])))
+
 (defn gen-mutations
   [data-layer all-fschemas fschema]
-  (let [create (gen-create-and-update data-layer all-fschemas fschema)
-        delete (gen-delete data-layer fschema)]
+  (let [create              (gen-create-and-update data-layer all-fschemas fschema)
+        delete              (gen-delete data-layer fschema)
+        relations           (gen-relations-mutations data-layer all-fschemas fschema)]
     {:mutations (merge (:mutations create)
-                       (:mutations delete))
+                       (:mutations delete)
+                       (:mutations relations))
      :resolvers (merge (:resolvers create)
-                       (:resolvers delete))}))
+                       (:resolvers delete)
+                       (:resolvers relations))}))

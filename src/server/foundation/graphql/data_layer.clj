@@ -36,7 +36,10 @@
     "create entity")
   (delete-entity
     [this fschema context params value]
-    "delete entity (and nested)"))
+    "delete entity (and nested)")
+  (delete-one-nested-entity
+    [this fschema relation context params value]
+    "delete a has-one nested entity"))
 
 (s/def ::dbtype string?)
 (s/def ::dbname string?)
@@ -114,7 +117,13 @@
 
   (delete-entity
     [db-spec fschema context params value]
-    (mysql/delete-entity db-spec fschema params)))
+    (mysql/delete-entity db-spec (:entity-name fschema) params))
+
+  (delete-one-nested-entity
+    [db-spec fschema relation context params value]
+    (let [entity (mysql/get-by-id db-spec (:from relation) (:id params))]
+      (mysql/delete-entity db-spec (:to relation) {(:fk relation) (:id params)})
+      entity)))
 
 (defn new-mysql-data-layer
   [db-spec]
